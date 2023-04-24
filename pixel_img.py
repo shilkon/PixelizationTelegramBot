@@ -25,8 +25,8 @@ def get_average_color(image, x, y, side, width, height):
     y_border = min(y + side, height)
     return tuple(np.round(cv2.mean(image[x : x_border, y : y_border])[:3]))
     
-def create_palette(color_lvl):
-    colors, color_coeff = np.linspace(0, 255, num=color_lvl, dtype=int, retstep=True)
+def create_palette(color_depth):
+    colors, color_coeff = np.linspace(0, 255, num=color_depth, dtype=int, retstep=True)
     color_palette = [np.array([b, g, r]) for b in colors for g in colors for r in colors]
     palette = {}
     color_coeff = int(color_coeff)
@@ -69,10 +69,10 @@ def get_average_color_numba(image, x, y, side, width, height):
     return np.round(color_sum / side**2, 0, color_sum)
     
 if __name__ == '__main__':
-    def single_process(convert_func, image, color_lvl, pixel_size):
+    def single_process(convert_func, image, color_depth, pixel_size):
         print('Processing image single process...')
         start_time = time.time()
-        image = convert_func(image, create_palette(color_lvl), pixel_size)
+        image = convert_func(image, create_palette(color_depth), pixel_size)
         end_time = time.time()
         print('Time: {}\n'.format(end_time - start_time))
         # cv2.imshow('img', image)

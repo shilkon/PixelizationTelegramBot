@@ -45,9 +45,9 @@ def convert_video_numba(path, output_name, palette, pixel_size = 8):
     out.release()
 
 if __name__ == '__main__':
-    def single_process(convert_func, output_name, path, color_lvl, pixel_size):
+    def single_process(convert_func, output_name, path, color_depth, pixel_size):
         print('Processing video single process...')
-        palette = pixel_img.create_palette(color_lvl)
+        palette = pixel_img.create_palette(color_depth)
         start_time = time.time()
         convert_func(path, output_name, palette, pixel_size)
         end_time = time.time()
