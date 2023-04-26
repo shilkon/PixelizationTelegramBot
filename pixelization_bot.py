@@ -71,7 +71,7 @@ async def convert_image(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     palette = pixel_img.create_palette(color_depth)
     pixel_size = context.user_data['pixel_size']
     
-    converted_image = pixel_img.convert_image(image, palette, pixel_size)
+    converted_image = pixel_img.process_image(image, palette, pixel_size)
     ret, buffer = cv2.imencode('.jpg', converted_image)
     buf = BytesIO(buffer)
     logger.info("Converted image for User %s", user.username)

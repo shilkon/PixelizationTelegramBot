@@ -3,7 +3,7 @@ from numba import njit
 import cv2
 import time
 
-def convert_image(image, palette, pixel_size = 8):
+def process_image(image, palette, pixel_size = 8):
     image = cv2.transpose(image)
     width, height = image.shape[0], image.shape[1]
     palette, color_coef = palette
@@ -35,13 +35,13 @@ def create_palette(color_depth):
         palette[color_key] = tuple(int(x) for x in color)
     return palette, color_coeff
 
-def convert_image_numba(image, palette, pixel_size = 8):
+def process_image_numba(image, palette, pixel_size = 8):
     image = cv2.transpose(image)
     width, height = image.shape[0], image.shape[1]
     palette, color_coef = palette
     converted_image = np.zeros((height, width, 3), np.uint8)
     side = pixel_size - 1
-    array_of_values = accelerate_conversion(image, width, height, color_coef, pixel_size)
+    array_of_values = accelerate_process(image, width, height, color_coef, pixel_size)
     for color_key, (x, y) in array_of_values:
         color = palette[color_key]
         pt1 = (x, y)
@@ -49,8 +49,8 @@ def convert_image_numba(image, palette, pixel_size = 8):
         cv2.rectangle(converted_image, pt1, pt2, color, cv2.FILLED)
     return converted_image
 
-@njit(fastmath=True, cache=True)
-def accelerate_conversion(image, width, height, color_coeff, step):
+@njit(fastmath=True)
+def accelerate_process(image, width, height, color_coeff, step):
     array_of_values = []
     side = step - 1
     color_indices = image // color_coeff
@@ -61,7 +61,7 @@ def accelerate_conversion(image, width, height, color_coeff, step):
                 array_of_values.append(((b, g, r), (x, y)))
     return array_of_values   
 
-@njit(fastmath=True, cache=True)
+@njit(fastmath=True)
 def get_average_color_numba(image, x, y, side, width, height):
     x_border = min(x + side, width)
     y_border = min(y + side, height)
@@ -84,8 +84,8 @@ if __name__ == '__main__':
     image = cv2.imread('resources/mountain.jpg')
     
     print('cv2.mean')
-    single_process(convert_image, image, 16, 4)
+    single_process(process_image, image, 16, 4)
         
     print('Numba')    
-    single_process(convert_image_numba, image, 16, 4)
+    single_process(process_image_numba, image, 16, 4)
     # cv2.destroyAllWindows()
