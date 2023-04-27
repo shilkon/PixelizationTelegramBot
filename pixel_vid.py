@@ -25,7 +25,10 @@ def process_video_sp(process_func, path, output_name,  palette, pixel_size = 8):
     out.release()
     
 def process_video_mp(process_img_func, path, output_name, palette, pixel_size = 8):
-    num_processes = mp.cpu_count()
+    num_processes = 4
+    threads_count = mp.cpu_count()
+    if num_processes > threads_count:
+        num_processes = threads_count
     
     cap = cv2.VideoCapture(path)
     frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -40,7 +43,7 @@ def process_video_mp(process_img_func, path, output_name, palette, pixel_size = 
         cap = cv2.VideoCapture(path)
         cap.set(cv2.CAP_PROP_POS_FRAMES, frame_shift * part_number)
         
-        out = cv2.VideoWriter("output/mp/output_{}.mp4".format(part_number), fourcc, fps, (width,  height))
+        out = cv2.VideoWriter("output/temp/output_{}.mp4".format(part_number), fourcc, fps, (width,  height))
         part_end = frame_shift
         if part_number == num_processes - 1:
             part_end = frame_count - frame_shift * part_number
@@ -61,7 +64,7 @@ def process_video_mp(process_img_func, path, output_name, palette, pixel_size = 
     
 def combine_output_files(num_processes, output_file_name):
     # Create a list of output files and store the file names in a txt file
-    list_of_output_files = ["output/mp/output_{}.mp4".format(i) for i in range(num_processes)]
+    list_of_output_files = ["output/temp/output_{}.mp4".format(i) for i in range(num_processes)]
     with open("list_of_output_files.txt", "w") as f:
         for t in list_of_output_files:
             f.write("file {} \n".format(t))
@@ -78,21 +81,27 @@ def combine_output_files(num_processes, output_file_name):
 if __name__ == '__main__':
     def single_process(process_video_func, process_img_func, path, output_name, color_depth, pixel_size):
         print('Processing video single process...')
+        
         palette = pixel_img.create_palette(color_depth)
+        
         start_time = time.time()
         process_video_func(process_img_func, path, output_name, palette, pixel_size)
         end_time = time.time()
+        
         print('Time: {}\n'.format(end_time - start_time))
         
     def multi_process(process_video_func, process_img_func, path, output_name, color_depth, pixel_size):
         print('Processing video multiple processes...')
+        
         palette = pixel_img.create_palette(color_depth)
+        
         start_time = time.time()
         process_video_func(process_img_func, path, output_name, palette, pixel_size)
         end_time = time.time()
+        
         print('Time: {}\n'.format(end_time - start_time))
         
-    path = 'resources/train.mp4'
+    path = 'resources/bebek.mp4'
     
     # print('cv2.mean SP')
     # single_process(process_video_sp, pixel_img.convert_image, path, 'output/meanSP.avi', 32, 8)
@@ -104,4 +113,4 @@ if __name__ == '__main__':
     # multi_process(process_video_mp, pixel_img.convert_image, path, 'output/mp/meanMP.avi', 32, 8)
     
     print('Numba MP')
-    multi_process(process_video_mp, pixel_img.process_image_numba, path, 'output/mp/numbaMP.avi', 32, 8)
+    multi_process(process_video_mp, pixel_img.process_image_numba, path, 'output/numbaMP.avi', 32, 8)
