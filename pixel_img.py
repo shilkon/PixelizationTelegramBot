@@ -21,10 +21,6 @@ def create_palette(color_lvl):
         
     return palette, color_coeff
 
-# def check_pixel_size(pixel_size):
-#     if pixel_size < 2 or pixel_size > width or pixel_size > height:
-#         raise pe.InvalidPixelSize
-
 def process_image(image, palette, pixel_size = 8):
     image = cv2.transpose(image)
     width, height = image.shape[0], image.shape[1]
