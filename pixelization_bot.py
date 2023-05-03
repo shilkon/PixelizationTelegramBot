@@ -4,8 +4,10 @@ import pixel_video_tg as pixel_video
 from dotenv import load_dotenv
 from os import getenv
 from telegram import (
-    Update
+    Update,
+    
 )
+from telegram.error import TelegramError
 from telegram.ext import (
     filters,
     ApplicationBuilder,
@@ -37,6 +39,16 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     
 async def unknown(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Извините, я не понял вашу команду.")
+    
+async def error(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    logger.error(context.error)
+    if isinstance(context.error, TelegramError):
+        match context.error.message:
+            case "File is too big":
+                await update.message.reply_text(
+                    "Файл слишком большой!\n"
+                    "Максимальный размер файла равен 20 МБ"
+                )
 
 if __name__ == '__main__':
     load_dotenv()
@@ -82,5 +94,7 @@ if __name__ == '__main__':
     application.add_handler(pixel_image_conversation_handler)
     application.add_handler(pixel_video_conversation_handler)
     application.add_handler(MessageHandler(filters.COMMAND, unknown))
+    
+    application.add_error_handler(error)
     
     application.run_polling()
