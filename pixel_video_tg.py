@@ -3,8 +3,7 @@ import pixel_exception as pe
 import pixel_video
 from os import remove
 from telegram import (
-    Update,
-    InputMediaVideo
+    Update
 )
 from telegram.ext import (
     ContextTypes,
@@ -58,7 +57,7 @@ async def process_video(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     await update.message.reply_text("Видео обрабатывается, пожалуйста подождите...")
     
     pixel_size = context.user_data['pixel_size_video']
-    pixelized_video = pixel_video.pixelize_video(video, pixel_size)
+    pixelized_video = pixel_video.VideoHandler(video).pixelize(pixel_size)
     
     with open(pixelized_video, 'rb') as result:
         # await update.message.delete()
@@ -79,7 +78,7 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 async def cancel_required(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.message.from_user
-    logger.info('Cancellation required, User %s', user.name)
+    logger.info('Cancellation of video pixelization required, User %s', user.name)
     await update.message.reply_text(
         "Прежде чем использовать другие функции бота,"
         "отмените пикселизацию видео "

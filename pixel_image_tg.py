@@ -127,7 +127,7 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 async def cancel_required(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.message.from_user
-    logger.info('Cancellation required, User %s', user.name)
+    logger.info('Cancellation of image processing required, User %s', user.name)
     await update.message.reply_text(
         "Прежде чем использовать другие функции бота,"
         "отмените создание пиксель-арта из изображения "

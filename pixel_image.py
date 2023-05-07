@@ -1,7 +1,7 @@
 import numpy as np
 from numba import njit
 import cv2
-import time
+import face_recognition
 import pixel_exception as pe
 
 AVAILABLE_COLOR_LEVELS = (4, 8, 16, 32, 64)
@@ -90,30 +90,34 @@ def get_average_color_acc_for_video(image, y, x, side, height, width):
     x_border = min(x + side, width)
     color_sum = np.sum(np.sum(image[y : y_border, x : x_border], 0), 0)
     
-    return np.round(color_sum / side**2, 0, color_sum) 
+    return np.round(color_sum / side**2, 0, color_sum)
+
+def pixel_faces(image):
+    faces = face_recognition.face_locations(image)
+    
+    for top, right, bottom, left in faces:
+        pixel_face(image, left, top, right - left, bottom - top)
+            
+def pixel_face(image, x, y, width, height):
+    pixel_size = height // 8 if height > 16 else 2
+    
+    if pixel_size < 2 or pixel_size > width or pixel_size > height:
+        raise pe.InvalidPixelSize
+    
+    side = pixel_size - 1
+    for y_face in range(y, y + height, pixel_size):
+        for x_face in range(x, x + width, pixel_size):
+            color = get_average_color(image, y_face, x_face, side, y + height, x + width)
+            cv2.rectangle(image, (x_face, y_face), (x_face + side , y_face + side), color, cv2.FILLED)
     
 if __name__ == '__main__':
-    def single_process(convert_func, *args):
-        start_time = time.time()
-        image = convert_func(*args)
-        end_time = time.time()
-        
-        print('Time: {}\n'.format(end_time - start_time))
-        
-        # cv2.imshow('img', image)
-        # if cv2.waitKey() == ord("s"):
-        #     print('pixel-art saved')
-        #     cv2.imwrite('output/pixel-art.jpg', image)
+    image_file = open('resources/people.jpg', 'rb')
+
+    image = face_recognition.load_image_file(image_file)
+
+    pixel_faces(image)
     
-    image = cv2.imread('resources/mountain.jpg')
-    
-    print('Processing image')
-    single_process(process_image, image, create_palette(32), 8)
-    
-    print('Pixelize image')    
-    single_process(pixelize_image, image, 8)
-    
-    print('Pixelize image accelerated for video')    
-    single_process(pixelize_image_acc_for_video, image, 8)
-    
+    image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+    cv2.imshow('img', image)
+    cv2.waitKey()
     cv2.destroyAllWindows()

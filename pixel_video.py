@@ -8,89 +8,131 @@ from os import (
     mkdir,
     rmdir
 )
+
+class VideoHandler:
+    PIXELIZE, ANONYMIZE = range(2)
     
-def pixelize_video(path: str, pixel_size: int) -> str:
-    file = path.split('/')[-1]
-    file_name = file.split('.')[0]
-    dir_name = f"temp/{file_name}"
-    mkdir(dir_name)
-    
-    audio_file = f"{dir_name}/audio.wav"
-    extract_audio(path, audio_file)
-    
-    num_processes = 4
-    threads_count = mp.cpu_count()
-    if num_processes > threads_count:
-        num_processes = threads_count
-    
-    cap = cv2.VideoCapture(path)
-    frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    frame_shift = int(frame_count // num_processes)
-    fps = cap.get(cv2.CAP_PROP_FPS)
-    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    cap.release()
-    
-    def process_video_part(part_number):
-        cap = cv2.VideoCapture(path)
-        cap.set(cv2.CAP_PROP_POS_FRAMES, frame_shift * part_number)
+    def __init__(self, path: str) -> None:
+        self.__path = path
+        self.__file = path.split('/')[-1]
+        self.__file_name = self.__file.split('.')[0]
+        self.__dir_name = f"temp/{self.__file_name}"
         
-        out = cv2.VideoWriter(f"{dir_name}/part_{part_number}.mp4", fourcc, fps, (width,  height))
-        part_end = frame_shift
-        if part_number == num_processes - 1:
-            part_end = frame_count - frame_shift * part_number
-        for proc_frames in range(part_end):
+        self.__initialize_num_processes()
+        
+        cap = cv2.VideoCapture(path)
+        self.__frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        self.__frame_shift = int(self.__frame_count // self.__num_processes)
+        self.__fps = cap.get(cv2.CAP_PROP_FPS)
+        self.__width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        self.__height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        self.__fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        cap.release()
+        
+    def __initialize_num_processes(self):
+        self.__num_processes = 4
+        threads_count = mp.cpu_count()
+        if self.__num_processes > threads_count:
+            self.__num_processes = threads_count
+        
+    def __process(self, mode):
+        mkdir(self.__dir_name)
+        self.__audio_file = f"{self.__dir_name}/audio.wav"
+        self.__extract_audio()
+        
+        p = mp.Pool(self.__num_processes)
+        match mode:
+            case self.PIXELIZE: p.map(self.__pixelize_video_part, range(self.__num_processes))
+            case self.ANONYMIZE: p.map(self.__anonymize_video_part, range(self.__num_processes))
+        
+        self.__video_without_audio_file = f"{self.__dir_name}/video.mp4"
+        self.__combine_video_parts()
+        result_video = f"temp/{self.__file}"
+        self.__add_audio_to_video(result_video)
+        rmdir(self.__dir_name)
+        
+        return result_video
+    
+    def __extract_audio(self):
+        ffmpeg_cmd = f"ffmpeg -y -loglevel error -i {self.__path} {self.__audio_file}"
+        sp.Popen(ffmpeg_cmd, shell=True).wait()
+        
+        
+    def __pixelize_video_part(self, part_number):
+        cap = cv2.VideoCapture(self.__path)
+        cap.set(cv2.CAP_PROP_POS_FRAMES, self.__frame_shift * part_number)
+        
+        out = cv2.VideoWriter(f"{self.__dir_name}/part_{part_number}.mp4",
+                              self.__fourcc, self.__fps, (self.__width,  self.__height))
+        part_end = self.__frame_shift
+        if part_number == self.__num_processes - 1:
+            part_end = self.__frame_count - self.__frame_shift * part_number
+        for _ in range(part_end):
             ret, frame = cap.read()
             if not ret:
                 break
-            converted_frame = pixel_image.pixelize_image_acc_for_video(frame, pixel_size)
+            
+            converted_frame = pixel_image.pixelize_image_acc_for_video(frame, self.__pixel_size)
+            
             out.write(converted_frame)
             
         cap.release()
         out.release()
-    
-    p = mp.Pool(num_processes)
-    p.map(process_video_part, range(num_processes))
-    
-    video_without_audio_file = f"{dir_name}/video.mp4"
-    combine_video_parts(num_processes, video_without_audio_file, dir_name)
-    result_video = f"temp/{file}"
-    add_audio_to_video(video_without_audio_file, audio_file, result_video)
-    rmdir(dir_name)
-    
-    return result_video
-    
-def extract_audio(video_source: str, audio_file: str):
-    ffmpeg_cmd = f"ffmpeg -y -loglevel error -i {video_source} {audio_file}"
-    sp.Popen(ffmpeg_cmd, shell=True).wait()
-    
-def combine_video_parts(num_processes: int, output_file_name: str, dir_name: str):
-    video_parts = ["part_{}.mp4".format(i) for i in range(num_processes)]
-    
-    video_parts_file = f"{dir_name}/video_part_files.txt"
-    with open(video_parts_file, "w") as video_part:
-        for t in video_parts:
-            video_part.write("file {} \n".format(t))
+        
+    def __anonymize_video_part(self, part_number):
+        cap = cv2.VideoCapture(self.__path)
+        cap.set(cv2.CAP_PROP_POS_FRAMES, self.__frame_shift * part_number)
+        
+        out = cv2.VideoWriter(f"{self.__dir_name}/part_{part_number}.mp4",
+                              self.__fourcc, self.__fps, (self.__width,  self.__height))
+        part_end = self.__frame_shift
+        if part_number == self.__num_processes - 1:
+            part_end = self.__frame_count - self.__frame_shift * part_number
+        for _ in range(part_end):
+            ret, frame = cap.read()
+            if not ret:
+                break
+            
+            pixel_image.pixel_faces(frame)
+                
+            out.write(frame)
+            
+        cap.release()
+        out.release()
+        
+    def __combine_video_parts(self):
+        video_parts = ["part_{}.mp4".format(i) for i in range(self.__num_processes)]
+        
+        video_parts_file = f"{self.__dir_name}/video_part_files.txt"
+        with open(video_parts_file, "w") as video_part:
+            for t in video_parts:
+                video_part.write("file {} \n".format(t))
 
-    ffmpeg_cmd = f"ffmpeg -y -loglevel error -f concat -safe 0 -i {video_parts_file} -vcodec copy {output_file_name}"
-    sp.Popen(ffmpeg_cmd, shell=True).wait()
+        ffmpeg_cmd = f"ffmpeg -y -loglevel error -f concat -safe 0 -i {video_parts_file} -vcodec copy {self.__video_without_audio_file}"
+        sp.Popen(ffmpeg_cmd, shell=True).wait()
 
-    for f in video_parts:
-        remove(f"{dir_name}/{f}")
-    remove(video_parts_file)
+        for f in video_parts:
+            remove(f"{self.__dir_name}/{f}")
+        remove(video_parts_file)
+        
+    def __add_audio_to_video(self, result_video: str):
+        ffmpeg_cmd = f"ffmpeg -y -loglevel error -i {self.__video_without_audio_file} -i {self.__audio_file} {result_video}"
+        sp.Popen(ffmpeg_cmd, shell=True).wait()
+        
+        remove(self.__video_without_audio_file)
+        remove(self.__audio_file)
+        
+    def pixelize(self, pixel_size: int = None):
+        self.__pixel_size = pixel_size
+        return self.__process(self.PIXELIZE)
     
-def add_audio_to_video(video_source: str, audio_source: str, output_name: str):
-    ffmpeg_cmd = f"ffmpeg -y -loglevel error -i {video_source} -i {audio_source} {output_name}"
-    sp.Popen(ffmpeg_cmd, shell=True).wait()
-    
-    remove(video_source)
-    remove(audio_source)
+    def anonymize(self):
+        return self.__process(self.ANONYMIZE)
 
 if __name__ == '__main__':
     def test(path, pixel_size):
         start_time = time.time()
-        pixelize_video(path, pixel_size)
+        VideoHandler(path).pixelize(pixel_size)
         end_time = time.time()
         
         print('Time: {}\n'.format(end_time - start_time))

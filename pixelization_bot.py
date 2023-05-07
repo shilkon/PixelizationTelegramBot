@@ -1,6 +1,7 @@
 import logging
 import pixel_image_tg as pixel_image
 import pixel_video_tg as pixel_video
+import pixel_face_tg as pixel_face
 from dotenv import load_dotenv
 from os import getenv
 from telegram import (
@@ -66,7 +67,7 @@ if __name__ == '__main__':
             ],
             pixel_image.PROCESS_IMAGE: [
                 MessageHandler(filters.PHOTO | filters.Document.IMAGE, pixel_image.process_image)
-            ],
+            ]
         },
         fallbacks=[
             CommandHandler('cancel', pixel_image.cancel),
@@ -82,7 +83,7 @@ if __name__ == '__main__':
             ],
             pixel_video.PROCESS_VIDEO: [
                 MessageHandler(filters.VIDEO, pixel_video.process_video)
-            ],
+            ]
         },
         fallbacks=[
             CommandHandler('cancel', pixel_video.cancel),
@@ -90,9 +91,24 @@ if __name__ == '__main__':
         ]
     )
     
+    anonymization_conversation_handler = ConversationHandler(
+        entry_points=[CommandHandler("face", pixel_face.face)],
+        states={
+            pixel_face.ANONYMIZATION: [
+                MessageHandler(filters.PHOTO | filters.Document.IMAGE, pixel_face.anonymize_image),
+                MessageHandler(filters.VIDEO, pixel_face.anonymize_video)
+            ]
+        },
+        fallbacks=[
+            CommandHandler('cancel', pixel_face.cancel),
+            MessageHandler(filters.COMMAND, pixel_face.cancel_required)
+        ]
+    )
+    
     application.add_handler(CommandHandler('start', start))
     application.add_handler(pixel_image_conversation_handler)
     application.add_handler(pixel_video_conversation_handler)
+    application.add_handler(anonymization_conversation_handler)
     application.add_handler(MessageHandler(filters.COMMAND, unknown))
     
     application.add_error_handler(error)
