@@ -35,7 +35,7 @@ class VideoHandler:
         if self.__num_processes > threads_count:
             self.__num_processes = threads_count
         
-    def __process(self, mode):
+    def __process(self, mode) -> str:
         mkdir(self.__dir_name)
         self.__audio_file = f"{self.__dir_name}/audio.wav"
         self.__extract_audio()
@@ -122,11 +122,11 @@ class VideoHandler:
         ffmpeg_cmd = f"ffmpeg -y -loglevel error -i {self.__video_without_audio_file} -i {self.__audio_file} {self.__result_video}"
         sp.Popen(ffmpeg_cmd, shell=True).wait()
         
-    def pixelize(self, pixel_size: int):
+    def pixelize(self, pixel_size: int) -> str:
         self.__pixel_size = pixel_size
         return self.__process(self.PIXELIZE)
     
-    def anonymize(self):
+    def anonymize(self) -> str:
         return self.__process(self.ANONYMIZE)
 
 if __name__ == '__main__':
