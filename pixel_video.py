@@ -18,7 +18,7 @@ class VideoHandler:
         self.__file_name = self.__file.split('.')[0]
         self.__dir_name = f"temp/{self.__file_name}"
         
-        self.__initialize_num_processes()
+        self.__init_num_processes()
         
         cap = cv2.VideoCapture(path)
         self.__frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -29,7 +29,7 @@ class VideoHandler:
         self.__fourcc = cv2.VideoWriter_fourcc(*'mp4v')
         cap.release()
         
-    def __initialize_num_processes(self):
+    def __init_num_processes(self):
         self.__num_processes = 4
         threads_count = mp.cpu_count()
         if self.__num_processes > threads_count:
@@ -45,13 +45,16 @@ class VideoHandler:
             case self.PIXELIZE: p.map(self.__pixelize_video_part, range(self.__num_processes))
             case self.ANONYMIZE: p.map(self.__anonymize_video_part, range(self.__num_processes))
         
-        self.__video_without_audio_file = f"{self.__dir_name}/video.mp4"
         self.__combine_video_parts()
-        result_video = f"temp/{self.__file}"
-        self.__add_audio_to_video(result_video)
+        for f in self.__video_parts:
+            remove(f"{self.__dir_name}/{f}")
+        
+        self.__add_audio_to_video()
+        remove(self.__video_without_audio_file)
+        remove(self.__audio_file)
         rmdir(self.__dir_name)
         
-        return result_video
+        return self.__result_video
     
     def __extract_audio(self):
         ffmpeg_cmd = f"ffmpeg -y -loglevel error -i {self.__path} {self.__audio_file}"
@@ -101,26 +104,23 @@ class VideoHandler:
         out.release()
         
     def __combine_video_parts(self):
-        video_parts = ["part_{}.mp4".format(i) for i in range(self.__num_processes)]
+        self.__video_parts = ["part_{}.mp4".format(i) for i in range(self.__num_processes)]
         
         video_parts_file = f"{self.__dir_name}/video_part_files.txt"
         with open(video_parts_file, "w") as video_part:
-            for t in video_parts:
+            for t in self.__video_parts:
                 video_part.write("file {} \n".format(t))
-
+                
+        self.__video_without_audio_file = f"{self.__dir_name}/video.mp4"
         ffmpeg_cmd = f"ffmpeg -y -loglevel error -f concat -safe 0 -i {video_parts_file} -vcodec copy {self.__video_without_audio_file}"
         sp.Popen(ffmpeg_cmd, shell=True).wait()
 
-        for f in video_parts:
-            remove(f"{self.__dir_name}/{f}")
         remove(video_parts_file)
         
-    def __add_audio_to_video(self, result_video: str):
-        ffmpeg_cmd = f"ffmpeg -y -loglevel error -i {self.__video_without_audio_file} -i {self.__audio_file} {result_video}"
+    def __add_audio_to_video(self):
+        self.__result_video = f"temp/{self.__file}"
+        ffmpeg_cmd = f"ffmpeg -y -loglevel error -i {self.__video_without_audio_file} -i {self.__audio_file} {self.__result_video}"
         sp.Popen(ffmpeg_cmd, shell=True).wait()
-        
-        remove(self.__video_without_audio_file)
-        remove(self.__audio_file)
         
     def pixelize(self, pixel_size: int = None):
         self.__pixel_size = pixel_size
