@@ -122,7 +122,7 @@ class VideoHandler:
         ffmpeg_cmd = f"ffmpeg -y -loglevel error -i {self.__video_without_audio_file} -i {self.__audio_file} {self.__result_video}"
         sp.Popen(ffmpeg_cmd, shell=True).wait()
         
-    def pixelize(self, pixel_size: int = None):
+    def pixelize(self, pixel_size: int):
         self.__pixel_size = pixel_size
         return self.__process(self.PIXELIZE)
     
