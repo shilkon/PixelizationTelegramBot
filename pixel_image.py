@@ -1,123 +1,155 @@
-import numpy as np
-from numba import njit
 import cv2
 import face_recognition
+import numpy as np
+from numba import njit
+
 import pixel_exception as pe
 
-AVAILABLE_COLOR_LEVELS = (4, 8, 16, 32, 64)
 
-def create_palette(color_lvl):
-    if color_lvl not in AVAILABLE_COLOR_LEVELS:
-        raise pe.InvalidColorLvl
-    
-    colors, color_coeff = np.linspace(0, 255, num=color_lvl, dtype=int, retstep=True)
-    color_palette = [np.array([b, g, r]) for b in colors for g in colors for r in colors]
-    palette = {}
-    color_coeff = int(color_coeff)
-    
-    for color in color_palette:
-        color_key = tuple(color // color_coeff)
-        palette[color_key] = tuple(int(x) for x in color)
-        
-    return palette, color_coeff
+class ImageHandler:
+    AVAILABLE_COLOR_LEVELS = (4, 8, 16, 32, 64)
 
-def process_image(image, palette, pixel_size):
-    (height, width) = image.shape[:2]
-    
-    if pixel_size < 2 or pixel_size > width or pixel_size > height:
-        raise pe.InvalidPixelSize
-    
-    palette, color_coef = palette
-    
-    side = pixel_size - 1
-    color_indices = image // color_coef  
-      
-    for y in range(0, height, pixel_size):
-        for x in range(0, width, pixel_size):
-            color = palette[get_average_color(color_indices, y, x, side, height, width)]
-            cv2.rectangle(image, (x, y), (x + side , y + side), color, cv2.FILLED)
-                
-    return image
+    def __init__(self, image) -> None:
+        self.__image = image
+        self.__height, self.__width = image.shape[:2]
 
-def get_average_color(image, y, x, side, height, width):
-    y_border = min(y + side, height)
-    x_border = min(x + side, width)
-    
-    return tuple(np.round(cv2.mean(image[y : y_border, x : x_border])[:3]))
+    def process(self, color_level, pixel_size):
+        self.__create_palette(color_level)
 
-def pixelize_image(image, pixel_size):
-    (height, width) = image.shape[:2]
-    
-    if pixel_size < 2 or pixel_size > width or pixel_size > height:
-        raise pe.InvalidPixelSize
-    
-    side = pixel_size - 1
-    for y in range(0, height, pixel_size):
-        for x in range(0, width, pixel_size):
-            color = get_average_color(image, y, x, side, height, width)
-            cv2.rectangle(image, (x, y), (x + side , y + side), color, cv2.FILLED)
-    
-    return image
+        self.__check_pixel_size(pixel_size)
 
-def pixelize_image_acc_for_video(image, pixel_size):
-    (height, width) = image.shape[:2]
-    
-    if pixel_size < 2 or pixel_size > width or pixel_size > height:
-        raise pe.InvalidPixelSize
-    
-    side = pixel_size - 1
-    pixels = accelerate_pixelization(image, height, width, pixel_size, side)
-    
-    for color, (x, y) in pixels:
-        cv2.rectangle(image, (x, y), (x + side , y + side), color, cv2.FILLED)
-    
-    return image
+        self.__side = pixel_size - 1
+        self.__color_indices = self.__image // self.__color_coeff
+
+        for y in range(0, self.__height, pixel_size):
+            for x in range(0, self.__width, pixel_size):
+                color = self.__palette[
+                    self.__get_average_color(
+                        self.__color_indices, y, x, self.__height, self.__width
+                    )
+                ]
+                cv2.rectangle(
+                    self.__image,
+                    (x, y),
+                    (x + self.__side, y + self.__side),
+                    color,
+                    cv2.FILLED,
+                )
+
+    def pixelize(self, pixel_size):
+        self.__check_pixel_size(pixel_size)
+
+        for y in range(0, self.__height, pixel_size):
+            for x in range(0, self.__width, pixel_size):
+                color = self.__get_average_color(
+                    self.__image, y, x, self.__height, self.__width
+                )
+                cv2.rectangle(
+                    self.__image,
+                    (x, y),
+                    (x + self.__side, y + self.__side),
+                    color,
+                    cv2.FILLED,
+                )
+
+    def pixelize_for_video(self, pixel_size):
+        self.__check_pixel_size(pixel_size)
+
+        pixels = accelerate_pixelization(
+            self.__image, self.__height, self.__width, self.__side
+        )
+
+        for color, (x, y) in pixels:
+            cv2.rectangle(
+                self.__image,
+                (x, y),
+                (x + self.__side, y + self.__side),
+                color,
+                cv2.FILLED,
+            )
+
+    def pixelize_faces(self):
+        faces = face_recognition.face_locations(self.__image)
+
+        for top, right, bottom, left in faces:
+            self.__pixelize_face(left, top, right - left, bottom - top)
+
+        return len(faces) > 0
+
+    def __create_palette(self, color_level):
+        if color_level not in self.AVAILABLE_COLOR_LEVELS:
+            raise pe.InvalidColorLvl
+
+        colors, color_coeff = np.linspace(0, 255, color_level, dtype=int, retstep=True)
+        color_palette = [
+            np.array([b, g, r]) for b in colors for g in colors for r in colors
+        ]
+        self.__palette = {}
+        self.__color_coeff = int(color_coeff)
+
+        for color in color_palette:
+            color_key = tuple(color // self.__color_coeff)
+            self.__palette[color_key] = tuple(int(x) for x in color)
+
+    def __check_pixel_size(self, pixel_size):
+        if pixel_size < 2 or pixel_size > self.__width or pixel_size > self.__height:
+            raise pe.InvalidPixelSize
+        self.__side = pixel_size - 1
+
+    def __get_average_color(self, image, y, x, height, width):
+        y_border = min(y + self.__side, height)
+        x_border = min(x + self.__side, width)
+
+        return tuple(np.round(cv2.mean(image[y:y_border, x:x_border])[:3]))
+
+    def __pixelize_face(self, x, y, width, height):
+        pixel_size = height // 8 if height > 16 else 2
+
+        self.__check_pixel_size(pixel_size)
+
+        for y_face in range(y, y + height, pixel_size):
+            for x_face in range(x, x + width, pixel_size):
+                color = self.__get_average_color(
+                    self.__image, y_face, x_face, y + height, x + width
+                )
+                cv2.rectangle(
+                    self.__image,
+                    (x_face, y_face),
+                    (x_face + self.__side, y_face + self.__side),
+                    color,
+                    cv2.FILLED,
+                )
+
 
 @njit(fastmath=True)
-def accelerate_pixelization(image, height, width, step, side):
+def accelerate_pixelization(image, height, width, side):
     pixels = []
-    
-    for y in range(0, height, step):
-        for x in range(0, width, step):
-            b, g, r = get_average_color_acc_for_video(image, y, x, side, height, width)
+
+    for y in range(0, height, side + 1):
+        for x in range(0, width, side + 1):
+            b, g, r = get_average_color(image, y, x, height, width, side)
             pixels.append(((b, g, r), (x, y)))
-                
-    return pixels  
+
+    return pixels
+
 
 @njit(fastmath=True)
-def get_average_color_acc_for_video(image, y, x, side, height, width):
+def get_average_color(image, y, x, height, width, side):
     y_border = min(y + side, height)
     x_border = min(x + side, width)
-    color_sum = np.sum(np.sum(image[y : y_border, x : x_border], 0), 0)
-    
+    color_sum = np.sum(np.sum(image[y:y_border, x:x_border], 0), 0)
+
     return np.round(color_sum / side**2, 0, color_sum)
 
-def pixel_faces(image):
-    faces = face_recognition.face_locations(image)
-    
-    for top, right, bottom, left in faces:
-        pixel_face(image, left, top, right - left, bottom - top)
-            
-def pixel_face(image, x, y, width, height):
-    pixel_size = height // 8 if height > 16 else 2
-    
-    if pixel_size < 2 or pixel_size > width or pixel_size > height:
-        raise pe.InvalidPixelSize
-    
-    side = pixel_size - 1
-    for y_face in range(y, y + height, pixel_size):
-        for x_face in range(x, x + width, pixel_size):
-            color = get_average_color(image, y_face, x_face, side, y + height, x + width)
-            cv2.rectangle(image, (x_face, y_face), (x_face + side , y_face + side), color, cv2.FILLED)
-    
-if __name__ == '__main__':
-    image_file = open('resources/people.jpg', 'rb')
+
+if __name__ == "__main__":
+    image_file = open("resources/scify.jpg", "rb")
 
     image = face_recognition.load_image_file(image_file)
 
-    pixel_faces(image)
-    
+    ImageHandler(image).pixelize(8)
+
     image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-    cv2.imshow('img', image)
+    cv2.imshow("img", image)
     cv2.waitKey()
     cv2.destroyAllWindows()
