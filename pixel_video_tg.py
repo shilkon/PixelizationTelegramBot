@@ -35,7 +35,7 @@ async def pixel_size(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
             user.name,
         )
         await update.message.reply_text(
-            "Размер пикселей задан неверно!\n" "Введите корректное значение."
+            "Размер пикселей задан неверно!\nВведите корректное значение."
         )
         return PIXEL_SIZE
 

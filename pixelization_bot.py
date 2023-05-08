@@ -32,11 +32,13 @@ logger = logging.getLogger(__name__)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text(
-        "Я могу создавать пиксель-арт из изображения и пикселизировать видео!\n"
+        "Я могу создавать пиксель-арт из изображения, пикселизировать видео, "
+        "а также анонимизировать лица на изображении или видео!\n"
         "Используйте команды и следуйте инструкциям.\n\n"
         "Доступные команды:\n"
         "/image - стилизация изображения под пиксель-арт\n"
         "/video - пикселизация видео"
+        "/face - анонимизация лиц на изображении или видео"
     )
 
 
@@ -50,7 +52,7 @@ async def error(update: Update, context: ContextTypes.DEFAULT_TYPE):
         match context.error.message:
             case "File is too big":
                 await update.message.reply_text(
-                    "Файл слишком большой!\n" "Максимальный размер файла равен 20 МБ"
+                    "Файл слишком большой!\nМаксимальный размер файла равен 20 МБ"
                 )
 
 
