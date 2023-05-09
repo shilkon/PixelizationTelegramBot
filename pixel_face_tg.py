@@ -45,7 +45,7 @@ async def anonymize_image(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
         return ConversationHandler.END
 
-    ret, buffer = cv2.imencode(".jpg", image)
+    _, buffer = cv2.imencode(".jpg", image)
     buf = BytesIO(buffer)
     logger.info("Anonymized image, User %s", user.name)
 

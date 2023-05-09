@@ -28,7 +28,7 @@ class VideoHandler:
         self.__fourcc = cv2.VideoWriter_fourcc(*"mp4v")
         cap.release()
 
-    def __init_num_processes(self):
+    def __init_num_processes(self) -> None:
         self.__num_processes = 4
         threads_count = mp.cpu_count()
         if self.__num_processes > threads_count:
@@ -41,14 +41,14 @@ class VideoHandler:
     def anonymize(self) -> str:
         return self.__process(self.ANONYMIZE)
 
-    def faces_not_found(self):
+    def faces_not_found(self) -> bool:
         return not self.__are_faces_found.value
 
-    def __extract_audio(self):
+    def __extract_audio(self) -> None:
         ffmpeg_cmd = f"ffmpeg -y -loglevel error -i {self.__path} {self.__audio_file}"
         sp.Popen(ffmpeg_cmd, shell=True).wait()
 
-    def __pixelize_video_part(self, part_number):
+    def __pixelize_video_part(self, part_number: int) -> None:
         cap = cv2.VideoCapture(self.__path)
         cap.set(cv2.CAP_PROP_POS_FRAMES, self.__frame_shift * part_number)
 
@@ -73,7 +73,7 @@ class VideoHandler:
         cap.release()
         out.release()
 
-    def __anonymize_video_part(self, part_number):
+    def __anonymize_video_part(self, part_number: int) -> None:
         cap = cv2.VideoCapture(self.__path)
         cap.set(cv2.CAP_PROP_POS_FRAMES, self.__frame_shift * part_number)
 
@@ -105,15 +105,13 @@ class VideoHandler:
         cap.release()
         out.release()
 
-    def __combine_video_parts(self):
-        self.__video_parts = [
-            "part_{}.mp4".format(i) for i in range(self.__num_processes)
-        ]
+    def __combine_video_parts(self) -> None:
+        self.__video_parts = [f"part_{i}.mp4" for i in range(self.__num_processes)]
 
         video_parts_file = f"{self.__dir_name}/video_part_files.txt"
-        with open(video_parts_file, "w") as video_part:
-            for t in self.__video_parts:
-                video_part.write("file {} \n".format(t))
+        with open(video_parts_file, "w") as video_parts:
+            for video_part in self.__video_parts:
+                video_parts.write(f"file {video_part} \n")
 
         self.__video_without_audio_file = f"{self.__dir_name}/video.mp4"
         ffmpeg_cmd = (
@@ -124,7 +122,7 @@ class VideoHandler:
 
         remove(video_parts_file)
 
-    def __add_audio_to_video(self):
+    def __add_audio_to_video(self) -> None:
         self.__result_video = f"temp/{self.__file}"
         ffmpeg_cmd = (
             f"ffmpeg -y -loglevel error -i {self.__video_without_audio_file} "
@@ -137,15 +135,15 @@ class VideoHandler:
         self.__audio_file = f"{self.__dir_name}/audio.wav"
         self.__extract_audio()
 
-        p = mp.Pool(self.__num_processes)
+        pool = mp.Pool(self.__num_processes)
         match mode:
             case self.PIXELIZE:
-                p.map(self.__pixelize_video_part, range(self.__num_processes))
+                pool.map(self.__pixelize_video_part, range(self.__num_processes))
             case self.ANONYMIZE:
                 self.__are_faces_found = mp.Manager().Value(bool, False)
-                p.map(self.__anonymize_video_part, range(self.__num_processes))
-        p.close()
-        p.join()
+                pool.map(self.__anonymize_video_part, range(self.__num_processes))
+        pool.close()
+        pool.join()
 
         self.__combine_video_parts()
         for f in self.__video_parts:
@@ -171,4 +169,4 @@ if __name__ == "__main__":
 
     remove(video)
 
-    print("Time: {}\n".format(end_time - start_time))
+    print(f"Time: {end_time - start_time}\n")

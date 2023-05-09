@@ -83,7 +83,7 @@ async def pixel_size(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 async def process(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user = update.message.from_user
 
-    if type(update.message.effective_attachment) is Document:
+    if isinstance(update.message.effective_attachment, Document):
         image_file = await update.message.effective_attachment.get_file()
     else:
         image_file = await update.message.photo[-1].get_file()
@@ -92,23 +92,23 @@ async def process(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     image = cv2.imdecode(np.asarray(image), cv2.IMREAD_COLOR)
     logger.info("Received image for image processing, User %s", user.name)
 
-    color_level = context.user_data["color_level_image"]
-    pixel_size = context.user_data["pixel_size_image"]
+    color_level_image = context.user_data["color_level_image"]
+    pixel_size_image = context.user_data["pixel_size_image"]
 
     try:
-        if color_level != 256:
-            ImageHandler(image).process(color_level, pixel_size)
+        if color_level_image != 256:
+            ImageHandler(image).process(color_level_image, pixel_size_image)
         else:
-            ImageHandler(image).pixelize(pixel_size)
+            ImageHandler(image).pixelize(pixel_size_image)
 
-    except pe.InvalidPixelSize as e:
-        logger.warning("In image processing: %s, User %s", e.message, user.name)
+    except pe.InvalidPixelSize as exception:
+        logger.warning("In image processing: %s, User %s", exception.message, user.name)
         await update.message.reply_text(
             "Размер пикселей задан неверно!\nВведите корректное значение."
         )
         return PIXEL_SIZE
 
-    ret, buffer = cv2.imencode(".jpg", image)
+    _, buffer = cv2.imencode(".jpg", image)
     buf = BytesIO(buffer)
     logger.info("Converted image, User %s", user.name)
 

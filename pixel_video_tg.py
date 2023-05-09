@@ -61,8 +61,8 @@ async def process_video(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         "Видео обрабатывается, пожалуйста подождите..."
     )
 
-    pixel_size = context.user_data["pixel_size_video"]
-    pixelized_video = VideoHandler(video).pixelize(pixel_size)
+    pixel_size_video = context.user_data["pixel_size_video"]
+    pixelized_video = VideoHandler(video).pixelize(pixel_size_video)
 
     with open(pixelized_video, "rb") as result:
         await context.bot.delete_message(reply.chat_id, reply.message_id)
