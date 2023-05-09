@@ -18,7 +18,8 @@ PIXEL_SIZE, PROCESS_VIDEO = range(2)
 async def video(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.message.reply_text(
         "Вы можете отменить процесс пикселизации видео с помощью команды /cancel.\n"
-        "Прежде чем обработать ваше видео, мне нужно узнать, во сколько раз нужно увеличить пиксели?"
+        "Прежде чем обработать ваше видео, мне нужно узнать, "
+        "во сколько раз нужно увеличить пиксели?"
     )
 
     return PIXEL_SIZE

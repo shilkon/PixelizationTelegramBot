@@ -7,7 +7,6 @@ import numpy as np
 from telegram import Document, Update
 from telegram.ext import ContextTypes, ConversationHandler
 
-import pixel_image
 from pixel_image import ImageHandler
 from pixel_video import VideoHandler
 
