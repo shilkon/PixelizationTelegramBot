@@ -1,5 +1,5 @@
 import logging
-from os import getenv
+import os
 from warnings import filterwarnings
 
 from dotenv import load_dotenv
@@ -37,7 +37,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "Используйте команды и следуйте инструкциям.\n\n"
         "Доступные команды:\n"
         "/image - стилизация изображения под пиксель-арт\n"
-        "/video - пикселизация видео"
+        "/video - пикселизация видео\n"
         "/face - анонимизация лиц на изображении или видео"
     )
 
@@ -57,8 +57,11 @@ async def error(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 if __name__ == "__main__":
+    if not os.path.isdir("download"):
+        os.mkdir("download")
+
     load_dotenv()
-    TOKEN = getenv("TOKEN")
+    TOKEN = os.getenv("TOKEN")
     application = ApplicationBuilder().token(TOKEN).build()
 
     pixel_image_conversation_handler = ConversationHandler(

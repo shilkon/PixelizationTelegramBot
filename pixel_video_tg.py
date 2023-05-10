@@ -1,5 +1,5 @@
 import logging
-from os import remove
+import os
 
 from telegram import Update
 from telegram.ext import ContextTypes, ConversationHandler
@@ -69,8 +69,8 @@ async def process_video(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         await update.message.reply_video(result)
         logger.info("Pixelized video sended, User %s", user.name)
 
-    remove(video)
-    remove(pixelized_video)
+    os.remove(video)
+    os.remove(pixelized_video)
 
     return ConversationHandler.END
 

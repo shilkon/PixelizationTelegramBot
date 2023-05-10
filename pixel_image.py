@@ -7,13 +7,41 @@ import pixel_exception as pe
 
 
 class ImageHandler:
+    """Image handler
+
+    Methods
+    -------
+    process(color_level: int, pixel_size: int)
+        Image processing with information about color depth and pixels size
+
+    pixelize(pixel_size: int)
+        Image pixelization with information about pixels size
+
+    pixelize_for_video(pixel_size: int)
+        Image pixelization accelearated for sequentially processing of video frames
+
+    pixelize_faces()
+        Pixelization of faces in image
+    """
+
     AVAILABLE_COLOR_LEVELS = (4, 8, 16, 32, 64)
 
     def __init__(self, image: np.ndarray) -> None:
+        """
+        Args:
+            image (np.ndarray): numpy array representing image
+        """
         self.__image = image
         self.__height, self.__width = image.shape[:2]
 
     def process(self, color_level: int, pixel_size: int) -> None:
+        """Image processing with information about color depth and pixel size
+
+        Args:
+            color_level (int): color level, describing color depth
+
+            pixel_size (int): size of pixels
+        """
         self.__create_palette(color_level)
 
         self.__check_pixel_size(pixel_size)
@@ -30,6 +58,11 @@ class ImageHandler:
                 )
 
     def pixelize(self, pixel_size: int) -> None:
+        """Image pixelization with information about pixel size
+
+        Args:
+            pixel_size (int): size of pixels
+        """
         self.__check_pixel_size(pixel_size)
 
         for y in range(0, self.__height, pixel_size):
@@ -44,6 +77,11 @@ class ImageHandler:
                 )
 
     def pixelize_for_video(self, pixel_size: int) -> None:
+        """Image pixelization accelearated for sequentially processing of video frames
+
+        Args:
+            pixel_size (int): size of pixels
+        """
         self.__check_pixel_size(pixel_size)
 
         pixels = accelerate_pixelization(
@@ -60,6 +98,11 @@ class ImageHandler:
             )
 
     def pixelize_faces(self) -> bool:
+        """Pixelization of faces in image
+
+        Returns:
+            bool: whether the faces were found in the image
+        """
         faces = face_recognition.face_locations(self.__image)
 
         for top, right, bottom, left in faces:
@@ -111,7 +154,7 @@ class ImageHandler:
 
 
 @njit(fastmath=True)
-def accelerate_pixelization(image, height, width, side):
+def accelerate_pixelization(image: np.ndarray, height: int, width: int, side: int):
     pixels = []
 
     for y in range(0, height, side + 1):
@@ -123,7 +166,9 @@ def accelerate_pixelization(image, height, width, side):
 
 
 @njit(fastmath=True)
-def get_average_color(image, y, x, height, width, side):
+def get_average_color(
+    image: np.ndarray, y: int, x: int, height: int, width: int, side: int
+):
     y_border = min(y + side, height)
     x_border = min(x + side, width)
     color_sum = np.sum(np.sum(image[y:y_border, x:x_border], 0), 0)

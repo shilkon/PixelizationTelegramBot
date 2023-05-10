@@ -1,6 +1,6 @@
 import subprocess as sp
 import time
-from os import mkdir, remove, rmdir
+import os
 
 import cv2
 import multiprocess as mp
@@ -9,15 +9,35 @@ from pixel_image import ImageHandler
 
 
 class VideoHandler:
+    """Video handler
+
+    Methods
+    -------
+    pixelize(pixel_size: int)
+        Video pixelization with information about pixels size
+
+    anonymize()
+        Video anonymization
+
+    faces_not_found()
+        Returns, whether the faces were found while video anonymization
+    """
+
     PIXELIZE, ANONYMIZE = range(2)
 
     def __init__(self, path: str) -> None:
+        """
+        Args:
+            path (str): path of the input video
+        """
         self.__path = path
         self.__file = path.split("/")[-1]
         self.__file_name = self.__file.split(".")[0]
         self.__dir_name = f"temp/{self.__file_name}"
 
         self.__init_num_processes()
+        if not os.path.isdir("temp"):
+            os.mkdir("temp")
 
         cap = cv2.VideoCapture(path)
         self.__frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -28,21 +48,37 @@ class VideoHandler:
         self.__fourcc = cv2.VideoWriter_fourcc(*"mp4v")
         cap.release()
 
+        self.__are_faces_found = mp.Manager().Value(bool, False)
+
+    def pixelize(self, pixel_size: int) -> str:
+        """Video pixelization with information about pixels size
+
+        Args:
+            pixel_size (int): size of pixels
+
+        Returns:
+            str: path of the result video
+        """
+        self.__pixel_size = pixel_size
+        return self.__process(self.PIXELIZE)
+
+    def anonymize(self) -> str:
+        """Video anonymization
+
+        Returns:
+            str: path of the result video
+        """
+        return self.__process(self.ANONYMIZE)
+
+    def faces_not_found(self) -> bool:
+        """Return whether the faces were found while video anonymization"""
+        return not self.__are_faces_found.value
+
     def __init_num_processes(self) -> None:
         self.__num_processes = 4
         threads_count = mp.cpu_count()
         if self.__num_processes > threads_count:
             self.__num_processes = threads_count
-
-    def pixelize(self, pixel_size: int) -> str:
-        self.__pixel_size = pixel_size
-        return self.__process(self.PIXELIZE)
-
-    def anonymize(self) -> str:
-        return self.__process(self.ANONYMIZE)
-
-    def faces_not_found(self) -> bool:
-        return not self.__are_faces_found.value
 
     def __extract_audio(self) -> None:
         ffmpeg_cmd = f"ffmpeg -y -loglevel error -i {self.__path} {self.__audio_file}"
@@ -120,7 +156,7 @@ class VideoHandler:
         )
         sp.Popen(ffmpeg_cmd, shell=True).wait()
 
-        remove(video_parts_file)
+        os.remove(video_parts_file)
 
     def __add_audio_to_video(self) -> None:
         self.__result_video = f"temp/{self.__file}"
@@ -131,7 +167,7 @@ class VideoHandler:
         sp.Popen(ffmpeg_cmd, shell=True).wait()
 
     def __process(self, mode) -> str:
-        mkdir(self.__dir_name)
+        os.mkdir(self.__dir_name)
         self.__audio_file = f"{self.__dir_name}/audio.wav"
         self.__extract_audio()
 
@@ -140,33 +176,32 @@ class VideoHandler:
             case self.PIXELIZE:
                 pool.map(self.__pixelize_video_part, range(self.__num_processes))
             case self.ANONYMIZE:
-                self.__are_faces_found = mp.Manager().Value(bool, False)
                 pool.map(self.__anonymize_video_part, range(self.__num_processes))
         pool.close()
         pool.join()
 
         self.__combine_video_parts()
         for f in self.__video_parts:
-            remove(f"{self.__dir_name}/{f}")
+            os.remove(f"{self.__dir_name}/{f}")
 
         self.__add_audio_to_video()
-        remove(self.__video_without_audio_file)
-        remove(self.__audio_file)
-        rmdir(self.__dir_name)
+        os.remove(self.__video_without_audio_file)
+        os.remove(self.__audio_file)
+        os.rmdir(self.__dir_name)
 
         return self.__result_video
 
 
 if __name__ == "__main__":
-    path = "resources/can.mp4"
+    test_path = "resources/can.mp4"
 
     print("Pixelize video")
     start_time = time.time()
-    handler = VideoHandler(path)
+    handler = VideoHandler(test_path)
     video = handler.anonymize()
     print(handler.faces_not_found())
     end_time = time.time()
 
-    remove(video)
+    os.remove(video)
 
     print(f"Time: {end_time - start_time}\n")
