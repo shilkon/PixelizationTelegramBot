@@ -50,7 +50,7 @@ class ImageHandler:
             for x in range(0, self.__width, pixel_size):
                 color = self.__get_average_color(y, x, self.__height, self.__width)
                 cv2.rectangle(
-                    image,
+                    self.__image,
                     (x, y),
                     (x + self.__side, y + self.__side),
                     self.__palette[tuple(c // self.__color_coeff for c in color)],
@@ -174,16 +174,3 @@ def get_average_color(
     color_sum = np.sum(np.sum(image[y:y_border, x:x_border], 0), 0)
 
     return np.round(color_sum / side**2, 0, color_sum)
-
-
-if __name__ == "__main__":
-    image_file = open("resources/t55a.jpg", "rb")
-
-    image = face_recognition.load_image_file(image_file)
-
-    ImageHandler(image).process(16, 4)
-
-    image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-    cv2.imshow("img", image)
-    cv2.waitKey()
-    cv2.destroyAllWindows()

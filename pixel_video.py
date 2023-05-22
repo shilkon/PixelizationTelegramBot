@@ -1,5 +1,4 @@
 import subprocess as sp
-import time
 import os
 
 import cv2
@@ -82,7 +81,7 @@ class VideoHandler:
 
     def __extract_audio(self) -> None:
         ffmpeg_cmd = f"ffmpeg -y -loglevel error -i {self.__path} {self.__audio_file}"
-        sp.Popen(ffmpeg_cmd, shell=True).wait()
+        sp.Popen(ffmpeg_cmd).wait()
 
     def __pixelize_video_part(self, part_number: int) -> None:
         cap = cv2.VideoCapture(self.__path)
@@ -154,7 +153,7 @@ class VideoHandler:
             "ffmpeg -y -loglevel error -f concat -safe 0 -i "
             f"{video_parts_file} -vcodec copy {self.__video_without_audio_file}"
         )
-        sp.Popen(ffmpeg_cmd, shell=True).wait()
+        sp.Popen(ffmpeg_cmd).wait()
 
         os.remove(video_parts_file)
 
@@ -164,7 +163,7 @@ class VideoHandler:
             f"ffmpeg -y -loglevel error -i {self.__video_without_audio_file} "
             f"-i {self.__audio_file} {self.__result_video}"
         )
-        sp.Popen(ffmpeg_cmd, shell=True).wait()
+        sp.Popen(ffmpeg_cmd).wait()
 
     def __process(self, mode) -> str:
         os.mkdir(self.__dir_name)
@@ -190,18 +189,3 @@ class VideoHandler:
         os.rmdir(self.__dir_name)
 
         return self.__result_video
-
-
-if __name__ == "__main__":
-    test_path = "resources/can.mp4"
-
-    print("Pixelize video")
-    start_time = time.time()
-    handler = VideoHandler(test_path)
-    video = handler.anonymize()
-    print(handler.faces_not_found())
-    end_time = time.time()
-
-    os.remove(video)
-
-    print(f"Time: {end_time - start_time}\n")
